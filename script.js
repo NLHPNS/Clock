@@ -20,20 +20,18 @@ const MAX_SPEED = 100000;
 
 let lastRealTime = performance.now();
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 const colors = {
     nightTop: [7, 14, 35],
     nightBottom: [20, 35, 70],
 
-    dayTop: [80, 190, 255],
-    dayBottom: [180, 225, 245],
+    sunriseTop: [245, 145, 95],
+    sunriseBottom: [105, 135, 175],
 
-    sunriseTop: [245, 150, 100],
-    sunriseBottom: [100, 150, 190],
+    dayTop: [75, 185, 250],
+    dayBottom: [175, 225, 245],
 
-    sunsetTop: [245, 115, 90],
-    sunsetBottom: [70, 70, 120]
+    sunsetTop: [245, 105, 80],
+    sunsetBottom: [75, 70, 120]
 };
 
 function clamp(value, min, max) {
@@ -51,31 +49,20 @@ function smoothstep(edge0, edge1, value) {
 }
 
 function interpolateColor(color1, color2, amount) {
-    const r =
-        color1[0] +
-        (color2[0] - color1[0]) * amount;
-
-    const g =
-        color1[1] +
-        (color2[1] - color1[1]) * amount;
-
-    const b =
-        color1[2] +
-        (color2[2] - color1[2]) * amount;
-
     return [
-        Math.round(r),
-        Math.round(g),
-        Math.round(b)
+        Math.round(
+            color1[0] +
+            (color2[0] - color1[0]) * amount
+        ),
+        Math.round(
+            color1[1] +
+            (color2[1] - color1[1]) * amount
+        ),
+        Math.round(
+            color1[2] +
+            (color2[2] - color1[2]) * amount
+        )
     ];
-}
-
-function mixColors(color1, color2, amount) {
-    return interpolateColor(
-        color1,
-        color2,
-        clamp(amount, 0, 1)
-    );
 }
 
 function colorToString(color) {
@@ -94,89 +81,24 @@ function getTimeInHours() {
 function getSunAngle() {
     const hours = getTimeInHours();
 
+    /*
+        Natural solar path:
+
+        00:00 = bottom
+        03:00 = lower left
+        06:00 = left
+        09:00 = upper left
+        12:00 = top
+        15:00 = upper right
+        18:00 = right
+        21:00 = lower right
+        24:00 = bottom
+    */
+
     return (
-        hours / 24
-    ) * Math.PI * 2;
-}
-
-function updateBackground() {
-    const sunAngle = getSunAngle();
-
-    const sunHeight = Math.cos(sunAngle);
-    const sunSide = Math.sin(sunAngle);
-
-    const dayAmount = smoothstep(
-        -0.2,
-        0.35,
-        sunHeight
+        hours / 24 * Math.PI * 2 +
+        Math.PI
     );
-
-    let topColor = mixColors(
-        colors.nightTop,
-        colors.dayTop,
-        dayAmount
-    );
-
-    let bottomColor = mixColors(
-        colors.nightBottom,
-        colors.dayBottom,
-        dayAmount
-    );
-
-    const horizonAmount =
-        1 - Math.abs(sunHeight);
-
-    const horizonStrength =
-        smoothstep(
-            0.15,
-            0.95,
-            horizonAmount
-        );
-
-    const sunriseWeight =
-        Math.max(0, sunSide) *
-        horizonStrength;
-
-    const sunsetWeight =
-        Math.max(0, -sunSide) *
-        horizonStrength;
-
-    const sunriseStrength =
-        sunriseWeight * 0.55;
-
-    const sunsetStrength =
-        sunsetWeight * 0.55;
-
-    topColor = mixColors(
-        topColor,
-        colors.sunriseTop,
-        sunriseStrength
-    );
-
-    bottomColor = mixColors(
-        bottomColor,
-        colors.sunriseBottom,
-        sunriseStrength
-    );
-
-    topColor = mixColors(
-        topColor,
-        colors.sunsetTop,
-        sunsetStrength
-    );
-
-    bottomColor = mixColors(
-        bottomColor,
-        colors.sunsetBottom,
-        sunsetStrength
-    );
-
-    scene.style.background =
-        `linear-gradient(
-            to bottom,
-            ${colorToString(topColor)},
-            ${colorToString(bottomColor)}
-        )`;
 }
 
 function updateClock() {
@@ -199,6 +121,141 @@ function updateClock() {
         `${timeSpeed}x`;
 }
 
+function updateBackground() {
+    const hours = getTimeInHours();
+
+    /*
+        Background follows the clock directly.
+
+        00:00 = midnight
+        06:00 = sunrise
+        12:00 = noon
+        18:00 = sunset
+        24:00 = midnight
+    */
+
+    const solarPhase =
+        (hours - 6) / 24 * Math.PI * 2;
+
+    /*
+        -1 = midnight
+         0 = sunrise/sunset
+         1 = noon
+    */
+    const sunHeight =
+        Math.sin(solarPhase);
+
+    /*
+        Smooth daylight strength.
+    */
+    const dayAmount =
+        smoothstep(
+            -0.18,
+            0.28,
+            sunHeight
+        );
+
+    let topColor =
+        interpolateColor(
+            colors.nightTop,
+            colors.dayTop,
+            dayAmount
+        );
+
+    let bottomColor =
+        interpolateColor(
+            colors.nightBottom,
+            colors.dayBottom,
+            dayAmount
+        );
+
+    /*
+        Sunrise and sunset happen around
+        06:00 and 18:00.
+    */
+    const horizonAmount =
+        Math.sqrt(
+            Math.max(
+                0,
+                1 - sunHeight * sunHeight
+            )
+        );
+
+    const horizonStrength =
+        smoothstep(
+            0.45,
+            1.0,
+            horizonAmount
+        );
+
+    /*
+        Determine which side of the horizon
+        the sun is crossing.
+
+        Around 06:00:
+        sunrise is strongest.
+
+        Around 18:00:
+        sunset is strongest.
+    */
+    const morningFactor =
+        Math.max(
+            0,
+            -Math.cos(solarPhase)
+        );
+
+    const eveningFactor =
+        Math.max(
+            0,
+            Math.cos(solarPhase)
+        );
+
+    const sunriseStrength =
+        morningFactor *
+        horizonStrength *
+        0.65;
+
+    const sunsetStrength =
+        eveningFactor *
+        horizonStrength *
+        0.65;
+
+    topColor =
+        interpolateColor(
+            topColor,
+            colors.sunriseTop,
+            sunriseStrength
+        );
+
+    bottomColor =
+        interpolateColor(
+            bottomColor,
+            colors.sunriseBottom,
+            sunriseStrength
+        );
+
+    topColor =
+        interpolateColor(
+            topColor,
+            colors.sunsetTop,
+            sunsetStrength
+        );
+
+    bottomColor =
+        interpolateColor(
+            bottomColor,
+            colors.sunsetBottom,
+            sunsetStrength
+        );
+
+    scene.style.background =
+        `linear-gradient(
+            to bottom,
+            ${colorToString(topColor)},
+            ${colorToString(bottomColor)}
+        )`;
+}
+
 function getOrbitRadius() {
     return window.innerWidth <= 600
         ? 250
@@ -217,11 +274,13 @@ function moveAroundEarth(object, angle) {
 
     const x =
         centerX +
-        Math.sin(angle) * orbitRadius;
+        Math.sin(angle) *
+        orbitRadius;
 
     const y =
         centerY -
-        Math.cos(angle) * orbitRadius;
+        Math.cos(angle) *
+        orbitRadius;
 
     object.style.left =
         `${x - object.offsetWidth / 2}px`;
@@ -247,6 +306,10 @@ function updateCelestialBodies() {
         moonAngle
     );
 
+    /*
+        Rotate the Earth environment
+        so the day side always faces the sun.
+    */
     const environmentRotation =
         sunAngle + Math.PI / 2;
 
