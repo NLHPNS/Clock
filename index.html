@@ -1,21 +1,80 @@
+
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>自然时钟</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Natural Clock</title>
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-    <div id="clock">00:00:00</div>
+    <main class="scene">
 
-    <div class="buttons">
-        <button id="speedUp">⏩ 加速时间</button>
-        <button id="reset">🔄 重置时间</button>
-    </div>
+        <div class="orbit"></div>
+
+        <div id="sun" class="celestial-body sun">
+            <div class="sun-core"></div>
+        </div>
+
+        <div id="moon" class="celestial-body moon">
+            <div class="moon-crater crater-one"></div>
+            <div class="moon-crater crater-two"></div>
+            <div class="moon-crater crater-three"></div>
+        </div>
+
+        <div class="earth">
+
+            <div id="environment">
+
+                <div class="day-side">
+
+                    <div class="cloud cloud-one"></div>
+                    <div class="cloud cloud-two"></div>
+                    <div class="cloud cloud-three"></div>
+                    <div class="cloud cloud-four"></div>
+
+                </div>
+
+                <div class="night-side">
+
+                    <div class="star star-one"></div>
+                    <div class="star star-two"></div>
+                    <div class="star star-three"></div>
+                    <div class="star star-four"></div>
+                    <div class="star star-five"></div>
+                    <div class="star star-six"></div>
+                    <div class="star star-seven"></div>
+                    <div class="star star-eight"></div>
+                    <div class="star star-nine"></div>
+                    <div class="star star-ten"></div>
+
+                </div>
+
+                <div class="day-night-line"></div>
+
+            </div>
+
+            <div class="earth-content">
+
+                <div id="clock">00:00:00</div>
+
+                <div id="speed">1x</div>
+
+                <div class="controls">
+                    <button id="speedUp">Speed Up</button>
+                    <button id="reset">Reset</button>
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
 
     <script src="script.js"></script>
+
 </body>
 </html>
 
